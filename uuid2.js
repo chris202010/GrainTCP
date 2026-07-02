@@ -1,45 +1,35 @@
-const CFG = {
-    id: '',  // 从环境变量读取
-    chunk: 64 * 1024,
-    dnPack: 32 * 1024,
-    dnTail: 512,
-    dnQr: 4,
-    upPack: 20 * 1024,
-    maxED: 8 * 1024,
-    concur: 4
-};
+const CFG = { id: '', chunk: 64 * 1024, dnPack: 32 * 1024, dnTail: 512, dnQr: 4, upPack: 20 * 1024, maxED: 8 * 1024, concur: 4 };
 
-// 十六进制转换辅助函数
-const hex = c => (c > 64 ? c + 9 : c) & 0xF;
-
-// UUID解析函数
+// 新增：UUID解析函数
 const parseUUID = uuid => {
-    const out = new Uint8Array(16);
-    for (let i = 0, p = 0, c, h; i < 16; i++) {
-        c = uuid.charCodeAt(p++);
-        c === 45 && (c = uuid.charCodeAt(p++));
-        h = hex(c);
-        c = uuid.charCodeAt(p++);
-        c === 45 && (c = uuid.charCodeAt(p++));
-        out[i] = (h << 4) | hex(c);
-    }
-    return out;
+  const out = new Uint8Array(16);
+  for (let i = 0, p = 0, c, h; i < 16; i++) {
+    c = uuid.charCodeAt(p++);
+    c === 45 && (c = uuid.charCodeAt(p++));
+    h = hex(c);
+    c = uuid.charCodeAt(p++);
+    c === 45 && (c = uuid.charCodeAt(p++));
+    out[i] = (h << 4) | hex(c);
+  }
+  return out;
 };
 
-// UUID字节数组和匹配函数
+// 修改：动态UUID变量
 let uuidBytes = new Uint8Array(16);
 const setUUID = uuid => {
-    CFG.id = uuid;
-    uuidBytes = parseUUID(uuid);
+  CFG.id = uuid;
+  uuidBytes = parseUUID(uuid);
 };
 
+// 修改：matchID使用动态uuidBytes
 const matchID = c => {
-    for (let i = 0; i < 16; i++) {
-        if (c[i + 1] !== uuidBytes[i]) return false;
-    }
-    return true;
+  for (let i = 0; i < 16; i++) {
+    if (c[i + 1] !== uuidBytes[i]) return false;
+  }
+  return true;
 };
 
+const hex = c => (c > 64 ? c + 9 : c) & 0xF;
 const dec = new TextDecoder();
 const addr = (t, b) => t === 1 ? `${b[0]}.${b[1]}.${b[2]}.${b[3]}` : t === 3 ? dec.decode(b) : `[${Array.from({ length: 8 }, (_, i) => ((b[i * 2] << 8) | b[i * 2 + 1]).toString(16)).join(':')}]`;
 const sprout = (f, h, p, s = f.connect({ hostname: h, port: p })) => s.opened.then(() => s);
@@ -80,17 +70,14 @@ const ws = async req => {
   if (ed && sow(ed)) thresh();
   server.addEventListener('message', e => { closed || (sow(e.data) && thresh()); });
   server.addEventListener('close', () => wither()); server.addEventListener('error', () => wither());
-  return new Response(null, { status: 101, webSocket: client, headers: { 'Sec-WebSocket-Extensions': '' } });
-};
+  return new Response(null, { status: 101, webSocket: client, headers: { 'Sec-WebSocket-Extensions': '' } }); };
 
-export default {
-  async fetch(req, env) {
-    // 从环境变量读取UUID并设置
+// 修改：export default支持env
+export default { 
+  fetch: async (req, env) => {
     if (env.UUID && env.UUID !== CFG.id) {
       setUUID(env.UUID);
     }
-    return req.headers.get('Upgrade')?.toLowerCase() === 'websocket'
-      ? ws(req)
-      : new Response('Hello world!');
-  }
+    return req.headers.get('Upgrade')?.toLowerCase() === 'websocket' ? ws(req) : new Response('Hello world!');
+  } 
 };
